@@ -9,7 +9,7 @@ namespace WpfChatClient.Services;
 
 public sealed class FileTransferService : IFileTransferService
 {
-    private const int BufferSize = 1_048_576;
+    private const int BufferSize = 4_194_304;
     private const long MaxFileSizeBytes = 10L * 1024 * 1024 * 1024;
 
     public async Task UploadFileAsync(
@@ -35,7 +35,7 @@ public sealed class FileTransferService : IFileTransferService
 
         string fileName = string.IsNullOrWhiteSpace(request.FileName) ? fileInfo.Name : request.FileName;
 
-        using var client = new TcpClient { NoDelay = true };
+        using var client = CreateClient();
         await client.ConnectAsync(request.ServerIp, request.FilePort, cancellationToken).ConfigureAwait(false);
 
         NetworkStream networkStream = client.GetStream();
@@ -102,7 +102,7 @@ public sealed class FileTransferService : IFileTransferService
                 Directory.CreateDirectory(directory);
             }
 
-            using var client = new TcpClient { NoDelay = true };
+            using var client = CreateClient();
             await client.ConnectAsync(request.ServerIp, request.FilePort, cancellationToken).ConfigureAwait(false);
 
             NetworkStream networkStream = client.GetStream();
@@ -236,5 +236,15 @@ public sealed class FileTransferService : IFileTransferService
         catch
         {
         }
+    }
+
+    private static TcpClient CreateClient()
+    {
+        return new TcpClient
+        {
+            NoDelay = true,
+            ReceiveBufferSize = BufferSize,
+            SendBufferSize = BufferSize
+        };
     }
 }

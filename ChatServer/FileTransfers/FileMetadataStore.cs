@@ -5,7 +5,7 @@ namespace ChatServer.FileTransfers;
 public sealed class FileMetadataStore
 {
     public const long MaxFileSizeBytes = 10L * 1024 * 1024 * 1024;
-    public const int BufferSizeBytes = 1_048_576;
+    public const int BufferSizeBytes = 4_194_304;
 
     private static readonly TimeSpan DefaultPartialMaxAge = TimeSpan.FromHours(24);
 

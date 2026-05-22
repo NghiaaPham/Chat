@@ -32,6 +32,8 @@ public sealed class FileTransferSession
         try
         {
             client.NoDelay = true;
+            client.ReceiveBufferSize = FileMetadataStore.BufferSizeBytes;
+            client.SendBufferSize = FileMetadataStore.BufferSizeBytes;
             await using var stream = client.GetStream();
             var remoteAddress = (client.Client.RemoteEndPoint as System.Net.IPEndPoint)?.Address.ToString() ?? string.Empty;
 
