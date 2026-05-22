@@ -17,6 +17,12 @@ public partial class FileTransferItem : ObservableObject
     private long _fileSize;
 
     [ObservableProperty]
+    private string _previewBase64 = string.Empty;
+
+    [ObservableProperty]
+    private string _previewMime = string.Empty;
+
+    [ObservableProperty]
     private string _sender = string.Empty;
 
     [ObservableProperty]
@@ -44,6 +50,7 @@ public partial class FileTransferItem : ObservableObject
     public bool IsBusy => Status is FileTransferUiStatus.Uploading or FileTransferUiStatus.Downloading;
     public bool CanDownload => Status == FileTransferUiStatus.Available && !IsOwn;
     public bool CanCancel => Status is FileTransferUiStatus.Uploading or FileTransferUiStatus.Downloading;
+    public bool HasPreview => !string.IsNullOrWhiteSpace(PreviewBase64);
 
     public static string FormatFileSize(long bytes)
     {
@@ -78,6 +85,11 @@ public partial class FileTransferItem : ObservableObject
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(CanDownload));
         OnPropertyChanged(nameof(CanCancel));
+    }
+
+    partial void OnPreviewBase64Changed(string value)
+    {
+        OnPropertyChanged(nameof(HasPreview));
     }
 
     partial void OnIsOwnChanged(bool value)

@@ -78,6 +78,8 @@ namespace ChatServer
         public string Sender { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public long FileSize { get; set; }
+        public string PreviewBase64 { get; set; } = string.Empty;
+        public string PreviewMime { get; set; } = string.Empty;
         public string CreatedAt { get; set; } = string.Empty;
     }
     public class FileAvailableData
@@ -572,6 +574,8 @@ namespace ChatServer
                                     Sender = transferRecord.Sender,
                                     FileName = transferRecord.SafeFileName,
                                     FileSize = transferRecord.FileSize,
+                                    PreviewBase64 = fileOfferData.PreviewBase64,
+                                    PreviewMime = fileOfferData.PreviewMime,
                                     CreatedAt = DateTime.Now.ToString("o")
                                 })
                             };

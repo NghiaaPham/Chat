@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -36,6 +37,16 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
     private readonly Dictionary<string, HashSet<string>> _roomMessageIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, FileTransferItem> _fileTransfers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, CancellationTokenSource> _fileTransferCancellations = new(StringComparer.OrdinalIgnoreCase);
+    private const int PreviewMaxBytes = 200 * 1024;
+    private const int PreviewDecodePixelWidth = 240;
+    private static readonly HashSet<string> PreviewExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp"
+    };
     private bool _hasJoinedRooms;
     private bool _hasConnectedOnce;
 
@@ -294,6 +305,8 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
                 TransferId = offer.TransferId,
                 FileName = offer.FileName,
                 FileSize = offer.FileSize,
+                PreviewBase64 = offer.PreviewBase64,
+                PreviewMime = offer.PreviewMime,
                 Sender = sender,
                 RoomId = normalizedRoomId,
                 IsOwn = isOwn,
@@ -310,6 +323,11 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
             transfer.Sender = sender;
             transfer.RoomId = normalizedRoomId;
             transfer.IsOwn = isOwn;
+            if (!string.IsNullOrWhiteSpace(offer.PreviewBase64))
+            {
+                transfer.PreviewBase64 = offer.PreviewBase64;
+                transfer.PreviewMime = offer.PreviewMime;
+            }
             if (transfer.Status == FileTransferUiStatus.Pending)
             {
                 transfer.StatusText = "Waiting";
@@ -784,11 +802,20 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
         }
 
         var username = _chatService.CurrentUsername ?? "You";
+        string previewBase64 = string.Empty;
+        string previewMime = string.Empty;
+        if (TryCreateImagePreview(fileInfo.FullName, out var preview, out var mime))
+        {
+            previewBase64 = preview;
+            previewMime = mime;
+        }
         var transfer = new FileTransferItem
         {
             TransferId = Guid.NewGuid().ToString("N"),
             FileName = fileInfo.Name,
             FileSize = fileInfo.Length,
+            PreviewBase64 = previewBase64,
+            PreviewMime = previewMime,
             Sender = username,
             RoomId = CurrentRoomId,
             IsOwn = true,
@@ -806,6 +833,8 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
             Sender = username,
             FileName = transfer.FileName,
             FileSize = transfer.FileSize,
+            PreviewBase64 = transfer.PreviewBase64,
+            PreviewMime = transfer.PreviewMime,
             CreatedAt = DateTime.Now.ToString("o")
         });
 
@@ -816,6 +845,8 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
             Sender = username,
             FileName = transfer.FileName,
             FileSize = transfer.FileSize,
+            PreviewBase64 = transfer.PreviewBase64,
+            PreviewMime = transfer.PreviewMime,
             CreatedAt = DateTime.Now.ToString("o")
         });
 
@@ -827,6 +858,60 @@ public partial class ChatViewModel : ObservableObject, IDisposable, IRecipient<C
             return;
         }
 
+    }
+
+    private static bool TryCreateImagePreview(string filePath, out string previewBase64, out string previewMime)
+    {
+        previewBase64 = string.Empty;
+        previewMime = string.Empty;
+
+        var extension = Path.GetExtension(filePath);
+        if (string.IsNullOrWhiteSpace(extension) || !PreviewExtensions.Contains(extension))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bitmap.DecodePixelWidth = PreviewDecodePixelWidth;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            BitmapEncoder encoder;
+            if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+            {
+                encoder = new PngBitmapEncoder();
+                previewMime = "image/png";
+            }
+            else
+            {
+                encoder = new JpegBitmapEncoder { QualityLevel = 70 };
+                previewMime = "image/jpeg";
+            }
+
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+            using var output = new MemoryStream();
+            encoder.Save(output);
+
+            if (output.Length > PreviewMaxBytes)
+            {
+                return false;
+            }
+
+            previewBase64 = Convert.ToBase64String(output.ToArray());
+            return !string.IsNullOrWhiteSpace(previewBase64);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void TryStartUploadAfterOffer(FileTransferItem transfer)

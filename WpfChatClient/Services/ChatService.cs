@@ -270,6 +270,8 @@ public class ChatService : IChatService
             FileSize = offer.FileSize,
             Sender = string.IsNullOrWhiteSpace(offer.Sender) ? _lastUsername ?? CurrentUsername ?? string.Empty : offer.Sender,
             RoomId = string.IsNullOrWhiteSpace(offer.RoomId) ? _activeRoomId : NormalizeRoomId(offer.RoomId),
+            PreviewBase64 = offer.PreviewBase64,
+            PreviewMime = offer.PreviewMime,
             CreatedAt = offer.CreatedAt
         };
 

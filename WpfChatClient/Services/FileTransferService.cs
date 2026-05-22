@@ -9,7 +9,7 @@ namespace WpfChatClient.Services;
 
 public sealed class FileTransferService : IFileTransferService
 {
-    private const int BufferSize = 262_144;
+    private const int BufferSize = 1_048_576;
     private const long MaxFileSizeBytes = 10L * 1024 * 1024 * 1024;
 
     public async Task UploadFileAsync(
